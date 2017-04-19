@@ -4,66 +4,123 @@ require_once($CFG->dirroot . '/repository/filesystem/lib.php');
 
 class repository_searchable extends repository_filesystem {
 
-    const PAGE_SIZE = 2;
+    protected static $nitems_values = array(10, 20, 30, 50, 80, 130);
+    protected $nitems_options;
+    protected $keyword;
+    protected $nitems;
+    protected $keywordId;
+    protected $lastKeywordId;
+    protected $nitemsId;
+
+
+    public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array())
+    {
+        parent::__construct($repositoryid, $context, $options);
+        $this->readonly = true;
+        $this->nitems_options = array();
+        foreach (self::$nitems_values as $option) {
+            $this->nitems_options[] = (object)array(
+                'label' => $option,
+                'value' => $option,
+            );
+        }
+    }
 
     public function check_login() {
         global $SESSION;
         $this->keyword = optional_param('searchable_keyword', '', PARAM_RAW);
+        $default_nitems = reset(self::$nitems_values);
+        $this->nitems = optional_param('searchable_nitems', $default_nitems, PARAM_INT);
+
         if (empty($this->keyword)) {
             $this->keyword = optional_param('s', '', PARAM_RAW);
         }
-        if (!empty($this->keyword)) {
-            $this->keyword = "*" . $this->keyword . "*";
-        }
+        //TODO: parameter "p" comes with directory name being selected.
+        // I propose to forget about being recursive.
         $sess_keyword = 'searchable_'.$this->id.'_keyword';
-        if (empty($this->keyword) && optional_param('page', '', PARAM_RAW)) {
-            // This is the request of another page for the last search, retrieve the cached keyword.
-            if (isset($SESSION->{$sess_keyword})) {
-                $this->keyword = $SESSION->{$sess_keyword};
-            }
-        } else if (!empty($this->keyword)) {
-            // Save the search keyword in the session so we can retrieve it later.
+        $last_sess_keyword = 'last_'.$sess_keyword;
+        $sess_nitems = 'searchable_'.$this->id.'_nitems';
+        if (isset($SESSION->{$sess_keyword})) {
+            $SESSION->{$last_sess_keyword} = $SESSION->{$sess_keyword};
+            unset($SESSION->{$sess_keyword});
+        }
+        if (!empty($this->keyword)) {
             $SESSION->{$sess_keyword} = $this->keyword;
+        }
+        if (empty($this->nitems)) {
+            if (isset($SESSION->{$sess_nitems})) {
+                $this->keyword = $SESSION->{$sess_nitems};
+            }
+        } else {
+            $SESSION->{$sess_nitems} = $this->nitems;
         }
         return !empty($this->keyword);
     }
 
     public function print_login()
     {
+        global $SESSION;
+        $sess_keyword = 'searchable_'.$this->id.'_keyword';
+        $last_sess_keyword = 'last_'.$sess_keyword;
+        $sess_nitems = 'searchable_'.$this->id.'_nitems';
+
+        unset($SESSION->{$sess_keyword});
+        $keywordtext = isset($SESSION->{$last_sess_keyword})?$SESSION->{$last_sess_keyword}:'';
+
         $keyword = new stdClass();
         $keyword->label = get_string('keyword', 'repository_searchable').': ';
         $keyword->id    = 'input_text_keyword';
         $keyword->type  = 'text';
         $keyword->name  = 'searchable_keyword';
-        $keyword->value = '';
+        $keyword->value = $keywordtext;
+
+        $nitems = new stdClass();
+        $nitems->label = get_string('nitems', 'repository_searchable').': ';
+        $nitems->id    = 'input_text_nitems';
+        $nitems->type  = 'select';
+        $nitems->name  = 'searchable_nitems';
+        $nitems->options = $this->nitems_options;
+
+        $last_nitems_value = isset($SESSION->{$sess_nitems})?$SESSION->{$sess_nitems}:reset(self::$nitems_values);
+        $last_nitems = new stdClass();
+        $last_nitems->id    = 'last_input_text_nitems';
+        $last_nitems->type  = 'hidden';
+        $last_nitems->name  = 'last_searchable_nitems';
+        $last_nitems->value = $last_nitems_value;
+
         if ($this->options['ajax']) {
             $form = array();
-            $form['login'] = array($keyword);
+            $form['login'] = array($keyword, $nitems, $last_nitems);
             $form['nologin'] = true;
+            $form['logouttext'] = get_string('newsearch', 'repository_searchable');
             $form['norefresh'] = true;
-            $form['nosearch'] = true;
+            $form['dynload'] = true;
+            $form['nosearch'] = false;
+            $form['issearchresult'] = true;
+            $form['allowcaching'] = false; // indicates that login form cannot be cached in filepicker.js
             return $form;
         } else {
+            $options = "";
+            foreach (self::$nitems_values as $option) {
+                $options .= "<option value=\"$option\">$option</option>";
+            }
             echo <<<EOD
 <table>
 <tr>
 <td>{$keyword->label}</td><td><input name="{$keyword->name}" type="text" /></td>
+<td>{$nitems->label}</td><td>
+    <select name="{$nitems->name}"/>
+        $options
+    </select>
+</td>
 </tr>
 </table>
 <input type="submit" />
 EOD;
         }
     }
-    public function print_search()
-    {
-        return $this->print_login();
-    }
-    
-    public function logout() {
-        return $this->print_login();
-    }
 
-        /**
+    /**
      * Get the list of files and directories in that repository.
      *
      * @param string $path to browse.
@@ -74,10 +131,12 @@ EOD;
         global $OUTPUT;
         $list = array();
         $list['list'] = array();
-        $list['manage'] = false;
         $list['dynload'] = true;
         $list['nologin'] = true;
         $list['norefresh'] = true;
+        $list['nosearch'] = true;
+        $list['issearchresult'] = true;
+        $list['allowcaching'] = false; // indicates that login form cannot be cached in filepicker.js
         $list['path'] = array(
             array('name' => get_string('root', 'repository_filesystem'), 'path' => '')
         );
@@ -105,37 +164,10 @@ EOD;
             }
         }
 
-        // Retrieve list of files and directories and sort them.
-        $fileslist = array();
-        $dirslist = array();
-        $searcher = repository_searchable_filelist_generator($abspath, $this->keyword);
-        $i = 0;
-        foreach ($searcher as list($isfile, $file)) {
-            if ($isfile) {
-                $fileslist[] = $file;
-                continue;
-            }
-            $dirslist[] = $file;
-            $i++;
-            if ($i >= self::PAGE_SIZE) {
-                break;
-            }
-        }
+        // Retrieve list of files matching the given expression.
+        $fileslist = repository_searchable_get_first($abspath, $this->keyword, $this->nitems);
 
         core_collator::asort($fileslist, core_collator::SORT_NATURAL);
-        core_collator::asort($dirslist, core_collator::SORT_NATURAL);
-
-        // Fill the $list['list'].
-        foreach ($dirslist as $file) {
-            $list['list'][] = array(
-                'title' => $file,
-                'children' => array(),
-                'datecreated' => filectime($abspath . $file),
-                'datemodified' => filemtime($abspath . $file),
-                'thumbnail' => $OUTPUT->pix_url(file_folder_icon(90))->out(false),
-                'path' => $path . '/' . $file
-            );
-        }
         foreach ($fileslist as $file) {
             $node = array(
                 'title' => $file,
@@ -160,34 +192,38 @@ EOD;
         return $list;
     }
 
-    public function search($search_text, $page = 0)
-    {
-        return $this->get_listing();
-    }
+}
 
+function repository_searchable_get_first($abspath, $filter, $nitems)
+{
+    $searcher = repository_searchable_filelist_generator($abspath, $filter);
+    $firstResults = array();
+    $nitem = 0;
+    foreach ($searcher as $filename) {
+        $firstResults[] = $filename;
+        $nitem++;
+        if ($nitem >= $nitems) {
+            break;
+        }
+    }
+    return $firstResults;
 }
 
 function repository_searchable_filelist_generator($abspath, $filter)
 {
-    // Retrieve list of files and directories and sort them.
+    // TODO: sort results.
     if (!($dh = opendir($abspath))) {
-//        var_dump("entro a no puc obrir directori");
         return;
     }
+    $realFilter = "*$filter*";
     while (($file = readdir($dh)) != false) {
-        if ($file == '.' || $file == '..') {
-//            var_dump("es .");
+        if (!is_file($abspath . $file)) {
             continue;
         }
-//        var_dump("filter => $filter, file => $file, match => " . (int)fnmatch($filter, $file, FNM_PERIOD));
-        if (!fnmatch($filter, $file, FNM_PERIOD)) {
+        if (!fnmatch($realFilter, $file, FNM_PERIOD)) {
             continue;
         }
-        if (is_file($abspath . $file)) {
-            yield array(true, $file);
-        } else {
-            yield array(false, $file);
-        }
+        yield $file;
     }
 }
 
