@@ -1,5 +1,8 @@
 <?php
 
+use repository_searchable\usecase\files\SelectFilesUseCase;
+use repository_searchable\usecase\files\SelectFilesCommand;
+
 require_once($CFG->dirroot . '/repository/filesystem/lib.php');
 
 class repository_searchable extends repository_filesystem {
@@ -165,9 +168,10 @@ EOD;
         }
 
         // Retrieve list of files matching the given expression.
-        $fileslist = repository_searchable_get_first($abspath, $this->keyword, $this->nitems);
+        $selection = new SelectFilesCommand($abspath, $this->keyword, $this->nitems);
+        $filter = new SelectFilesUseCase();
+        $fileslist = $filter->execute($selection);
 
-        core_collator::asort($fileslist, core_collator::SORT_NATURAL);
         foreach ($fileslist as $file) {
             $node = array(
                 'title' => $file,
@@ -193,37 +197,3 @@ EOD;
     }
 
 }
-
-function repository_searchable_get_first($abspath, $filter, $nitems)
-{
-    $searcher = repository_searchable_filelist_generator($abspath, $filter);
-    $firstResults = array();
-    $nitem = 0;
-    foreach ($searcher as $filename) {
-        $firstResults[] = $filename;
-        $nitem++;
-        if ($nitem >= $nitems) {
-            break;
-        }
-    }
-    return $firstResults;
-}
-
-function repository_searchable_filelist_generator($abspath, $filter)
-{
-    // TODO: sort results.
-    if (!($dh = opendir($abspath))) {
-        return;
-    }
-    $realFilter = "*$filter*";
-    while (($file = readdir($dh)) != false) {
-        if (!is_file($abspath . $file)) {
-            continue;
-        }
-        if (!fnmatch($realFilter, $file, FNM_PERIOD)) {
-            continue;
-        }
-        yield $file;
-    }
-}
-
