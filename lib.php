@@ -16,6 +16,8 @@
 
 use repository_searchable\usecase\files\SelectFilesUseCase;
 use repository_searchable\usecase\files\SelectFilesCommand;
+use repository_searchable\usecase\files\BuildFileListCommand;
+use repository_searchable\usecase\files\BuildFileListUseCase;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -188,26 +190,10 @@ EOD;
         $filter    = new SelectFilesUseCase();
         $fileslist = $filter->execute($selection);
 
-        foreach ($fileslist as $file) {
-            $node      = array(
-                'title'        => $file,
-                'source'       => $path . '/' . $file,
-                'size'         => filesize($abspath . $file),
-                'datecreated'  => filectime($abspath . $file),
-                'datemodified' => filemtime($abspath . $file),
-                'thumbnail'    => $OUTPUT->pix_url(file_extension_icon($file, 90))->out(false),
-                'icon'         => $OUTPUT->pix_url(file_extension_icon($file, 24))->out(false)
-            );
-            if (file_extension_in_typegroup($file, 'image') && ($imageinfo = @getimagesize($abspath . $file))) {
-                // This means it is an image and we can return dimensions and try to generate thumbnail/icon.
-                $token                 = $node['datemodified'] . $node['size']; // To prevent caching by browser.
-                $node['realthumbnail'] = $this->get_thumbnail_url($path . '/' . $file, 'thumb', $token)->out(false);
-                $node['realicon']      = $this->get_thumbnail_url($path . '/' . $file, 'icon', $token)->out(false);
-                $node['image_width']   = $imageinfo[0];
-                $node['image_height']  = $imageinfo[1];
-            }
-            $list['list'][] = $node;
-        }
+        $builder = new BuildFileListCommand($fileslist, $path, $abspath);
+        $nodeGenerator = new BuildFileListUseCase($OUTPUT, $this);
+        $list['list'] = $nodeGenerator->execute($builder);
+
         $list['list'] = array_filter($list['list'], array($this, 'filter'));
         return $list;
     }
