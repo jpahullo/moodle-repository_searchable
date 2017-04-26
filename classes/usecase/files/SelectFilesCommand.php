@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -17,36 +16,67 @@
 
 namespace repository_searchable\usecase\files;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
+ * Use case to choose files given a pattern from the user.
  *
  * @author Jordi Pujol-Ahulló <jpahullo@gmail.com>
  */
 class SelectFilesCommand implements \repository_searchable\usecase\Command
 {
 
+    /**
+     * Directory where to find files matching a given pattern.
+     * @var string
+     */
     private $abspath;
+
+    /**
+     * The given pattern to match
+     * @var string
+     */
     private $filter;
+
+    /**
+     * Number of filenames as maximum to return.
+     * @var int
+     */
     private $nitems;
 
-    public function __construct($abspath, $filter, $nitems)
-    {
+    /**
+     * Builds the command.
+     * @param string $abspath
+     * @param string $filter
+     * @param int $nitems
+     */
+    public function __construct($abspath, $filter, $nitems) {
         $this->abspath = $abspath;
         $this->filter  = $filter;
         $this->nitems  = $nitems;
     }
 
-    public function abspath()
-    {
+    /**
+     * Directory to look for files matching a given pattern.
+     * @return string
+     */
+    public function abspath() {
         return $this->abspath;
     }
 
-    public function filter()
-    {
+    /**
+     * The pattern provided by the user.
+     * @return string
+     */
+    public function filter() {
         return $this->filter;
     }
 
-    public function nitems()
-    {
+    /**
+     * Number of filenames to return as maximum.
+     * @return type
+     */
+    public function nitems() {
         return $this->nitems;
     }
 

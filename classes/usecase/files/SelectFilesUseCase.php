@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -17,7 +16,10 @@
 
 namespace repository_searchable\usecase\files;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
+ * Provides the set of filenames to show on the repository.
  *
  * @author Jordi Pujol-Ahulló <jpahullo@gmail.com>
  */
@@ -25,44 +27,45 @@ class SelectFilesUseCase implements \repository_searchable\usecase\UseCase
 {
 
     /**
-     *
+     * Provides the list of files matching the given pattern.
      * @param SelectFilesCommand $usecase
      * @return type
      */
-    public function execute($usecase)
-    {
+    public function execute($usecase) {
         $searcher     = $this->generator($usecase);
-        $firstResults = array();
+        $firstresults = array();
         $nitem        = 0;
         foreach ($searcher as $filename) {
-            $firstResults[] = $filename;
+            $firstresults[] = $filename;
             $nitem++;
             if ($nitem >= $usecase->nitems()) {
                 break;
             }
         }
-        \core_collator::asort($firstResults, \core_collator::SORT_NATURAL);
-        return $firstResults;
+        \core_collator::asort($firstresults, \core_collator::SORT_NATURAL);
+        return $firstresults;
     }
 
     /**
+     * Provides a file list generator of filenames matching the
+     * the given pattern.
      *
      * @param SelectFilesCommand $usecase
      * @return generator
      */
-    protected function generator($usecase)
-    {
+    protected function generator($usecase) {
         // TODO: sort results.
         if (!($dh = opendir($usecase->abspath()))) {
             return;
         }
 
-        $realFilter = "*" . $usecase->filter() . "*";
-        while (($file       = readdir($dh)) != false) {
+        $realfilter = "*" . $usecase->filter() . "*";
+
+        while (($file = readdir($dh)) != false) {
             if (!is_file($usecase->abspath() . $file)) {
                 continue;
             }
-            if (!fnmatch($realFilter, $file, FNM_PERIOD)) {
+            if (!fnmatch($realfilter, $file, FNM_PERIOD)) {
                 continue;
             }
             yield $file;

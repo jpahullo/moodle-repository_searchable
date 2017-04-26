@@ -1,30 +1,45 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 use repository_searchable\usecase\files\SelectFilesUseCase;
 use repository_searchable\usecase\files\SelectFilesCommand;
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot . '/repository/filesystem/lib.php');
 
-class repository_searchable extends repository_filesystem {
+class repository_searchable extends repository_filesystem
+{
 
-    protected static $nitems_values = array(10, 20, 30, 50, 80, 130);
-    protected $nitems_options;
+    protected static $nitemsvalues = array(10, 20, 30, 50, 80, 130);
+    protected $nitemsoptions;
     protected $keyword;
     protected $nitems;
-    protected $keywordId;
-    protected $lastKeywordId;
-    protected $nitemsId;
+    protected $keywordid;
+    protected $lastkeywordid;
+    protected $nitemsid;
 
-
-    public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array())
-    {
+    public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array()) {
         parent::__construct($repositoryid, $context, $options);
-        $this->readonly = true;
-        $this->nitems_options = array();
-        foreach (self::$nitems_values as $option) {
-            $this->nitems_options[] = (object)array(
-                'label' => $option,
-                'value' => $option,
+        $this->readonly      = true;
+        $this->nitemsoptions = array();
+        foreach (self::$nitemsvalues as $option) {
+            $this->nitemsoptions[] = (object) array(
+                        'label' => $option,
+                        'value' => $option,
             );
         }
     }
@@ -32,79 +47,79 @@ class repository_searchable extends repository_filesystem {
     public function check_login() {
         global $SESSION;
         $this->keyword = optional_param('searchable_keyword', '', PARAM_RAW);
-        $default_nitems = reset(self::$nitems_values);
-        $this->nitems = optional_param('searchable_nitems', $default_nitems, PARAM_INT);
+        $defaultnitems = reset(self::$nitemsvalues);
+        $this->nitems  = optional_param('searchable_nitems', $defaultnitems, PARAM_INT);
 
         if (empty($this->keyword)) {
             $this->keyword = optional_param('s', '', PARAM_RAW);
         }
-        //TODO: parameter "p" comes with directory name being selected.
+        // TODO: parameter "p" comes with directory name being selected.
         // I propose to forget about being recursive.
-        $sess_keyword = 'searchable_'.$this->id.'_keyword';
-        $last_sess_keyword = 'last_'.$sess_keyword;
-        $sess_nitems = 'searchable_'.$this->id.'_nitems';
-        if (isset($SESSION->{$sess_keyword})) {
-            $SESSION->{$last_sess_keyword} = $SESSION->{$sess_keyword};
-            unset($SESSION->{$sess_keyword});
+        $sesskeyword     = 'searchable_' . $this->id . '_keyword';
+        $lastsesskeyword = 'last_' . $sesskeyword;
+        $sessnitems      = 'searchable_' . $this->id . '_nitems';
+        if (isset($SESSION->{$sesskeyword})) {
+            $SESSION->{$lastsesskeyword} = $SESSION->{$sesskeyword};
+            unset($SESSION->{$sesskeyword});
         }
         if (!empty($this->keyword)) {
-            $SESSION->{$sess_keyword} = $this->keyword;
+            $SESSION->{$sesskeyword} = $this->keyword;
         }
         if (empty($this->nitems)) {
-            if (isset($SESSION->{$sess_nitems})) {
-                $this->keyword = $SESSION->{$sess_nitems};
+            if (isset($SESSION->{$sessnitems})) {
+                $this->keyword = $SESSION->{$sessnitems};
             }
         } else {
-            $SESSION->{$sess_nitems} = $this->nitems;
+            $SESSION->{$sessnitems} = $this->nitems;
         }
         return !empty($this->keyword);
     }
 
-    public function print_login()
-    {
+    public function print_login() {
         global $SESSION;
-        $sess_keyword = 'searchable_'.$this->id.'_keyword';
-        $last_sess_keyword = 'last_'.$sess_keyword;
-        $sess_nitems = 'searchable_'.$this->id.'_nitems';
+        $sesskeyword     = 'searchable_' . $this->id . '_keyword';
+        $lastsesskeyword = 'last_' . $sesskeyword;
+        $sessnitems      = 'searchable_' . $this->id . '_nitems';
 
-        unset($SESSION->{$sess_keyword});
-        $keywordtext = isset($SESSION->{$last_sess_keyword})?$SESSION->{$last_sess_keyword}:'';
+        unset($SESSION->{$sesskeyword});
+        $keywordtext = isset($SESSION->{$lastsesskeyword}) ? $SESSION->{$lastsesskeyword} : '';
 
-        $keyword = new stdClass();
-        $keyword->label = get_string('keyword', 'repository_searchable').': ';
+        $keyword        = new stdClass();
+        $keyword->label = get_string('keyword', 'repository_searchable') . ': ';
         $keyword->id    = 'input_text_keyword';
         $keyword->type  = 'text';
         $keyword->name  = 'searchable_keyword';
         $keyword->value = $keywordtext;
 
-        $nitems = new stdClass();
-        $nitems->label = get_string('nitems', 'repository_searchable').': ';
-        $nitems->id    = 'input_text_nitems';
-        $nitems->type  = 'select';
-        $nitems->name  = 'searchable_nitems';
-        $nitems->options = $this->nitems_options;
+        $nitems          = new stdClass();
+        $nitems->label   = get_string('nitems', 'repository_searchable') . ': ';
+        $nitems->id      = 'input_text_nitems';
+        $nitems->type    = 'select';
+        $nitems->name    = 'searchable_nitems';
+        $nitems->options = $this->nitemsoptions;
 
-        $last_nitems_value = isset($SESSION->{$sess_nitems})?$SESSION->{$sess_nitems}:reset(self::$nitems_values);
-        $last_nitems = new stdClass();
-        $last_nitems->id    = 'last_input_text_nitems';
-        $last_nitems->type  = 'hidden';
-        $last_nitems->name  = 'last_searchable_nitems';
-        $last_nitems->value = $last_nitems_value;
+        $lastnitemsvalue   = isset($SESSION->{$sessnitems}) ? $SESSION->{$sessnitems} : reset(self::$nitemsvalues);
+        $lastnitems        = new stdClass();
+        $lastnitems->id    = 'last_input_text_nitems';
+        $lastnitems->type  = 'hidden';
+        $lastnitems->name  = 'last_searchable_nitems';
+        $lastnitems->value = $lastnitemsvalue;
 
         if ($this->options['ajax']) {
-            $form = array();
-            $form['login'] = array($keyword, $nitems, $last_nitems);
-            $form['nologin'] = true;
-            $form['logouttext'] = get_string('newsearch', 'repository_searchable');
-            $form['norefresh'] = true;
-            $form['dynload'] = true;
-            $form['nosearch'] = false;
+            $form                   = array();
+            $form['login']          = array($keyword, $nitems, $lastnitems);
+            $form['nologin']        = true;
+            $form['logouttext']     = get_string('newsearch', 'repository_searchable');
+            $form['norefresh']      = true;
+            $form['dynload']        = true;
+            $form['nosearch']       = false;
             $form['issearchresult'] = true;
-            $form['allowcaching'] = false; // indicates that login form cannot be cached in filepicker.js
+            // Indicates that login form cannot be cached in filepicker.js.
+            $form['allowcaching']   = false;
             return $form;
         } else {
             $options = "";
-            foreach (self::$nitems_values as $option) {
+            foreach (self::$nitemsvalues as $option) {
                 $options .= "<option value=\"$option\">$option</option>";
             }
             echo <<<EOD
@@ -132,15 +147,16 @@ EOD;
      */
     public function get_listing($path = '', $page = '') {
         global $OUTPUT;
-        $list = array();
-        $list['list'] = array();
-        $list['dynload'] = true;
-        $list['nologin'] = true;
-        $list['norefresh'] = true;
-        $list['nosearch'] = true;
+        $list                   = array();
+        $list['list']           = array();
+        $list['dynload']        = true;
+        $list['nologin']        = true;
+        $list['norefresh']      = true;
+        $list['nosearch']       = true;
         $list['issearchresult'] = true;
-        $list['allowcaching'] = false; // indicates that login form cannot be cached in filepicker.js
-        $list['path'] = array(
+        // Indicates that login form cannot be cached in filepicker.js.
+        $list['allowcaching']   = false;
+        $list['path']           = array(
             array('name' => get_string('root', 'repository_filesystem'), 'path' => '')
         );
 
@@ -158,7 +174,7 @@ EOD;
             if (count($parts) > 1) {
                 foreach ($parts as $part) {
                     if (!empty($part)) {
-                        $trail .= '/' . $part;
+                        $trail          .= '/' . $part;
                         $list['path'][] = array('name' => $part, 'path' => $trail);
                     }
                 }
@@ -169,26 +185,26 @@ EOD;
 
         // Retrieve list of files matching the given expression.
         $selection = new SelectFilesCommand($abspath, $this->keyword, $this->nitems);
-        $filter = new SelectFilesUseCase();
+        $filter    = new SelectFilesUseCase();
         $fileslist = $filter->execute($selection);
 
         foreach ($fileslist as $file) {
-            $node = array(
-                'title' => $file,
-                'source' => $path . '/' . $file,
-                'size' => filesize($abspath . $file),
-                'datecreated' => filectime($abspath . $file),
+            $node      = array(
+                'title'        => $file,
+                'source'       => $path . '/' . $file,
+                'size'         => filesize($abspath . $file),
+                'datecreated'  => filectime($abspath . $file),
                 'datemodified' => filemtime($abspath . $file),
-                'thumbnail' => $OUTPUT->pix_url(file_extension_icon($file, 90))->out(false),
-                'icon' => $OUTPUT->pix_url(file_extension_icon($file, 24))->out(false)
+                'thumbnail'    => $OUTPUT->pix_url(file_extension_icon($file, 90))->out(false),
+                'icon'         => $OUTPUT->pix_url(file_extension_icon($file, 24))->out(false)
             );
             if (file_extension_in_typegroup($file, 'image') && ($imageinfo = @getimagesize($abspath . $file))) {
                 // This means it is an image and we can return dimensions and try to generate thumbnail/icon.
-                $token = $node['datemodified'] . $node['size']; // To prevent caching by browser.
+                $token                 = $node['datemodified'] . $node['size']; // To prevent caching by browser.
                 $node['realthumbnail'] = $this->get_thumbnail_url($path . '/' . $file, 'thumb', $token)->out(false);
-                $node['realicon'] = $this->get_thumbnail_url($path . '/' . $file, 'icon', $token)->out(false);
-                $node['image_width'] = $imageinfo[0];
-                $node['image_height'] = $imageinfo[1];
+                $node['realicon']      = $this->get_thumbnail_url($path . '/' . $file, 'icon', $token)->out(false);
+                $node['image_width']   = $imageinfo[0];
+                $node['image_height']  = $imageinfo[1];
             }
             $list['list'][] = $node;
         }
