@@ -16,6 +16,8 @@
 
 namespace repository_searchable\usecase\files;
 
+defined('MOODLE_INTERNAL') || die();
+
 use repository_searchable\usecase\Command;
 
 /**
@@ -25,25 +27,53 @@ use repository_searchable\usecase\Command;
  */
 class BuildFileListCommand implements Command
 {
-
+    /**
+     * @var array List of filenames matching a given pattern.
+     */
     private $files;
+    /**
+     * @var string Path inside the repository.
+     */
     private $path;
+    /**
+     * @var string Absolute path to the repository directory.
+     */
     private $abspath;
 
+    /**
+     * Builds the command with all necessary information.
+     * @param array $files
+     * @param string $path
+     * @param string $abspath
+     */
     public function __construct($files, $path, $abspath) {
-        $this->files = $files;
-        $this->path = $path;
+        $this->files   = $files;
+        $this->path    = $path;
         $this->abspath = $abspath;
     }
 
+    /**
+     * Array of filenames matching the pattern.
+     * @return array
+     */
     public function files() {
         return $this->files;
     }
 
+    /**
+     * Path inside the repository.
+     * @return string
+     */
     public function path() {
         return $this->path;
     }
+
+    /**
+     * Absolute path to the repository's directory.
+     * @return string
+     */
     public function abspath() {
         return $this->abspath;
     }
+
 }

@@ -190,11 +190,11 @@ EOD;
         $filter    = new SelectFilesUseCase();
         $fileslist = $filter->execute($selection);
 
+        // Retrieve list of files to show on the web.
         $builder = new BuildFileListCommand($fileslist, $path, $abspath);
-        $nodeGenerator = new BuildFileListUseCase($OUTPUT, $this);
-        $list['list'] = $nodeGenerator->execute($builder);
+        $nodegenerator = new BuildFileListUseCase($OUTPUT, $this);
+        $list['list'] = $nodegenerator->execute($builder);
 
-        $list['list'] = array_filter($list['list'], array($this, 'filter'));
         return $list;
     }
 
