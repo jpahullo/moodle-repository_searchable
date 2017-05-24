@@ -19,14 +19,18 @@ directories with lots (thousands) of files.
 
 We build course backups from Moodle courses, with thousands of backup files.
 When trying to mount the directory as a filesystem repository instance,
-it never ended.
+it hangs out, too many files to list on the web.
 
-Since we simply needed to pick up some file at a time, we thought on building
-a repository instance, based on server-side filesystem with searchable
-capabilities. It may be extensible to users if administrators want to, too.
+Since we simply need to pick up some file at a time, we thought on building
+a repository instance, based on server-side filesystem, that does not list
+files by default. Actually, it should show you a search form to then list only
+matching files with the typed search criteria. It may be extensible to users if
+administrators want to, too.
 
 To do so, we based this repository on the current filesystem repository from
-the Moodle core, and the ideas behind other searchable repositories.
+the Moodle core, including the ideas behind other searchable repositories,
+make it work and then applying some Domain-driven design concepts to the
+developed code, for a clearer, more sustainable code along time.
 
 ## Author
 
