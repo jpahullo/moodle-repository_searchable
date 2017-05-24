@@ -65,7 +65,7 @@ class SelectFilesUseCase implements \repository_searchable\usecase\UseCase
             if (!is_file($usecase->abspath() . $file)) {
                 continue;
             }
-            if (!fnmatch($realfilter, $file, FNM_PERIOD)) {
+            if (!fnmatch($realfilter, $file, FNM_PERIOD | FNM_CASEFOLD)) {
                 continue;
             }
             yield $file;
