@@ -26,118 +26,34 @@ require_once($CFG->dirroot . '/repository/filesystem/lib.php');
 class repository_searchable extends repository_filesystem
 {
 
-    protected static $nitemsvalues = array(10, 20, 30, 50, 80, 130);
-    protected $nitemsoptions;
-    protected $keyword;
-    protected $nitems;
-    protected $keywordid;
-    protected $lastkeywordid;
-    protected $nitemsid;
-
+    /**
+     * Builds this repository in a read-only mode.
+     * @param int $repositoryid repository id.
+     * @param int $context context id.
+     * @param array $options options for the repository.
+     */
     public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array()) {
         parent::__construct($repositoryid, $context, $options);
         $this->readonly      = true;
-        $this->nitemsoptions = array();
-        foreach (self::$nitemsvalues as $option) {
-            $this->nitemsoptions[] = (object) array(
-                        'label' => $option,
-                        'value' => $option,
-            );
-        }
     }
 
+    /**
+     * Checks whether we have to show the search form.
+     *
+     * @return bool true if it has to show the search form.
+     * false if search is done and we need to show results.
+     */
     public function check_login() {
-        global $SESSION;
-        $this->keyword = optional_param('searchable_keyword', '', PARAM_RAW);
-        $defaultnitems = reset(self::$nitemsvalues);
-        $this->nitems  = optional_param('searchable_nitems', $defaultnitems, PARAM_INT);
-
-        if (empty($this->keyword)) {
-            $this->keyword = optional_param('s', '', PARAM_RAW);
-        }
-        // TODO: parameter "p" comes with directory name being selected.
-        // I propose to forget about being recursive.
-        $sesskeyword     = 'searchable_' . $this->id . '_keyword';
-        $lastsesskeyword = 'last_' . $sesskeyword;
-        $sessnitems      = 'searchable_' . $this->id . '_nitems';
-        if (isset($SESSION->{$sesskeyword})) {
-            $SESSION->{$lastsesskeyword} = $SESSION->{$sesskeyword};
-            unset($SESSION->{$sesskeyword});
-        }
-        if (!empty($this->keyword)) {
-            $SESSION->{$sesskeyword} = $this->keyword;
-        }
-        if (empty($this->nitems)) {
-            if (isset($SESSION->{$sessnitems})) {
-                $this->keyword = $SESSION->{$sessnitems};
-            }
-        } else {
-            $SESSION->{$sessnitems} = $this->nitems;
-        }
-        return !empty($this->keyword);
+        return \repository_searchable\valueobject\SearchForm::from($this->id)->is_valid();
     }
 
+    /**
+     * Shows the search form only for the AJAX enabled web.
+     *
+     * @return array form elements of the search form for the repository AJAX.
+     */
     public function print_login() {
-        global $SESSION;
-        $sesskeyword     = 'searchable_' . $this->id . '_keyword';
-        $lastsesskeyword = 'last_' . $sesskeyword;
-        $sessnitems      = 'searchable_' . $this->id . '_nitems';
-
-        unset($SESSION->{$sesskeyword});
-        $keywordtext = isset($SESSION->{$lastsesskeyword}) ? $SESSION->{$lastsesskeyword} : '';
-
-        $keyword        = new stdClass();
-        $keyword->label = get_string('keyword', 'repository_searchable') . ': ';
-        $keyword->id    = 'input_text_keyword';
-        $keyword->type  = 'text';
-        $keyword->name  = 'searchable_keyword';
-        $keyword->value = $keywordtext;
-
-        $nitems          = new stdClass();
-        $nitems->label   = get_string('nitems', 'repository_searchable') . ': ';
-        $nitems->id      = 'input_text_nitems';
-        $nitems->type    = 'select';
-        $nitems->name    = 'searchable_nitems';
-        $nitems->options = $this->nitemsoptions;
-
-        $lastnitemsvalue   = isset($SESSION->{$sessnitems}) ? $SESSION->{$sessnitems} : reset(self::$nitemsvalues);
-        $lastnitems        = new stdClass();
-        $lastnitems->id    = 'last_input_text_nitems';
-        $lastnitems->type  = 'hidden';
-        $lastnitems->name  = 'last_searchable_nitems';
-        $lastnitems->value = $lastnitemsvalue;
-
-        if ($this->options['ajax']) {
-            $form                   = array();
-            $form['login']          = array($keyword, $nitems, $lastnitems);
-            $form['nologin']        = true;
-            $form['logouttext']     = get_string('newsearch', 'repository_searchable');
-            $form['norefresh']      = true;
-            $form['dynload']        = true;
-            $form['nosearch']       = false;
-            $form['issearchresult'] = true;
-            // Indicates that login form cannot be cached in filepicker.js.
-            $form['allowcaching']   = false;
-            return $form;
-        } else {
-            $options = "";
-            foreach (self::$nitemsvalues as $option) {
-                $options .= "<option value=\"$option\">$option</option>";
-            }
-            echo <<<EOD
-<table>
-<tr>
-<td>{$keyword->label}</td><td><input name="{$keyword->name}" type="text" /></td>
-<td>{$nitems->label}</td><td>
-    <select name="{$nitems->name}"/>
-        $options
-    </select>
-</td>
-</tr>
-</table>
-<input type="submit" />
-EOD;
-        }
+        return \repository_searchable\valueobject\SearchForm::from($this->id)->build_form();
     }
 
     /**
@@ -186,7 +102,9 @@ EOD;
         }
 
         // Retrieve list of files matching the given expression.
-        $selection = new SelectFilesCommand($abspath, $this->keyword, $this->nitems);
+        $form = \repository_searchable\valueobject\SearchForm::from($this->id);
+        $formdata = $form->get_data();
+        $selection = new SelectFilesCommand($abspath, $formdata->keyword, $formdata->nitems);
         $filter    = new SelectFilesUseCase();
         $fileslist = $filter->execute($selection);
 
