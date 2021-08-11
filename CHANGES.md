@@ -11,4 +11,4 @@ Maintained by:
 
 * Jordi Pujol-Ahulló (at SREd, Universitat Rovira i Virgili).
 
-[See all Github contributors](https://github.com/SREd-URV/moodle-auth_ip/graphs/contributors)
+[See all Github contributors](https://github.com/jpahullo/moodle-repository_searchable/graphs/contributors)
