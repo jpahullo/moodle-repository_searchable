@@ -1,3 +1,5 @@
+[![Moodle Plugin CI](https://github.com/jpahullo/moodle-repository_searchable/actions/workflows/moodle-ci.yml/badge.svg)](https://github.com/jpahullo/moodle-repository_searchable/actions/workflows/moodle-ci.yml) [![Releasing in the Plugins directory](https://github.com/jpahullo/moodle-repository_searchable/actions/workflows/moodle-release.yml/badge.svg)](https://github.com/jpahullo/moodle-repository_searchable/actions/workflows/moodle-release.yml)
+
 # Searchable Moodle repository
 
 A filesystem-based repository focused on searchable capabilities, ideal for
