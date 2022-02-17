@@ -15,10 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 defined('MOODLE_INTERNAL') || die();
-$plugin->version = 2021081100;                // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version = 2022021700;                // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires = 2012062500;               // Requires Moodle version 2.3.
 $plugin->component = 'repository_searchable'; // Full name of the plugin (used for diagnostics).
 $plugin->cron = 0;                            // Cron disabled.
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '2021081100';
+$plugin->release = '2022021700';
 
